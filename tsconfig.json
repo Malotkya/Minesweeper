@@ -6,7 +6,6 @@
       "jsx": "react",
       "allowJs": false,
       "moduleResolution": "node",
-      
       "outDir": "build"
     },
     "exclude": [
