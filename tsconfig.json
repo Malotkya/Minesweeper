@@ -1,0 +1,17 @@
+{
+    "compilerOptions": {
+      "noImplicitAny": true,
+      "module": "commonJS",
+      "target": "ES5",
+      "jsx": "react",
+      "allowJs": false,
+      "moduleResolution": "node",
+      
+      "outDir": "build"
+    },
+    "exclude": [
+      "build",
+      "node_modules",
+      "public"
+    ]
+  }
