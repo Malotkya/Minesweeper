@@ -2,8 +2,8 @@ import { Socket } from "socket.io";
 import { IncomingMessage } from "http";
 import { SessionData } from "express-session";
 
-import Board, {Tile, Game_Settings, Board_State} from "./Board";
-export {Game_Settings};
+import Board from "./Board";
+import { Game_Settings } from "../../util/GameData";
 
 interface GameSessionData extends SessionData{
     id: string
@@ -44,10 +44,12 @@ export default function Game(socket:SessionSocket){
 
             try {
                 session.board = new Board(message);
-                socket.send("Update", session.board.getState());
+                socket.emit("Update", session.board.getState());
+                console.log(`user ${session.id} created a new Game!`);
                 session.save();
             } catch (e){
-                socket.send("Error", e);
+                console.error(e);
+                socket.emit("Error", e);
             }
             
         });
@@ -55,7 +57,7 @@ export default function Game(socket:SessionSocket){
 
     socket.on("Click", (message:User_Interaction)=>{
         if(session.board === undefined)
-                socket.send("Error", new Error("Game is not initiated!"));
+                socket.emit("Error", new Error("Game is not initiated!"));
 
         session.reload((err: any)=>{
             if(err){
@@ -66,15 +68,18 @@ export default function Game(socket:SessionSocket){
             try {
                 if(message.type === "flag") {
                     session.board.flag(message.location);
+                    console.log(`User ${session.id} flagged Button[${message.location.x},${message.location.y}]!`);
                 } else {
-                    session.board.click(message.location)
+                    session.board.click(message.location);
+                    console.log(`User ${session.id} clicked Button[${message.location.x},${message.location.y}]!`);
                 }
         
-                socket.send("Update", session.board.getState())
+                socket.emit("Update", session.board.getState())
                 session.save();
         
             } catch (e){
-                socket.send("Error", e);
+                console.error(e);
+                socket.emit("Error", e);
             }
                
         });
