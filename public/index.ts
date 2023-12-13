@@ -12,3 +12,7 @@ window.onload = () => {
 socket.on("Update", (message:Board_State)=>{
     console.log(message);
 });
+
+socket.on("Error", (e:any)=>{
+    console.error(e);
+});
