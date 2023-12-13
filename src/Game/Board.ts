@@ -53,6 +53,8 @@ export default class Board {
                                       + Number(this.count(y  , x-1))                              + Number(this.count(y  , x+1))
                                       + Number(this.count(y+1, x-1)) + Number(this.count(y+1, x)) + Number(this.count(y+1, x+1));
                 }
+
+                this._cover[y][x] = Tile.UNKNOWN;
             }
         }
     }
@@ -76,15 +78,19 @@ export default class Board {
 
         for(let y=0; y<this._height; y++){
             output[y] = [];
+            let debug: string = "";
 
             for(let x=0; x<this._width; x++){
-                const mask = 1 << x;
                 if( this.cover(y,x) ){
-                    output[y][x] = this._state[y][x];
-                } else {
                     output[y][x] = this._cover[y][x];
+                    debug += this._cover[y][x] + " ";
+                } else {
+                    output[y][x] = this._state[y][x];
+                    debug += this._state[y][x] + " ";
                 }
             }
+
+            console.log(debug);
         }
 
         return output;
@@ -110,6 +116,7 @@ export default class Board {
     }
 
     public getState():Board_State {
+        console.log("Getting State!")
         return {
             state: this.getString(),
             board: this.getBoard()
