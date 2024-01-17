@@ -60,7 +60,7 @@ export default class Board {
     }
 
     private cover(y:number, x:number): boolean {
-        return (this._cover[y][y]) !== undefined;
+        return (this._cover[y][x]) !== undefined;
     }
 
     private count(y:number, x:number): number {
