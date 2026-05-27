@@ -1,0 +1,16 @@
+{
+    "$schema": "./node_modules/wrangler/config-schema.json",
+    "name": "minesweeper",
+    "compatibility_date": "2026-01-01",
+    "main": "./src/index.ts",
+    "assets": {
+        "directory": "./build",
+        "binding": "ASSETS"
+    },
+    "kv_namespaces": [
+        {
+            "binding": "KV",
+            "id": "d5ce6d2f281349c9a3469b536aae6a23"
+        }
+    ]
+}
