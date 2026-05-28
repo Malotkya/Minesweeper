@@ -7,11 +7,17 @@
   "main": "src/index.ts",
   "scripts": {
     "build:dev": "webpack-cli --env dev",
-    "build:prod": "webpack-cli --env prod"
+    "build:prod": "webpack-cli --env prod",
+    "build:clean": "rimraf ./build && npm run build:prod",
+    "build:watch": "webpack-cli --watch",
+    "preview:dev": "npm run build:dev && wranlger dev",
+    "preview:prod": "npm run build:prod && wranlger dev",
+    "preview:watch": "concurrently \"npm run build:dev\" \"wrangler dev\""
   },
   "dependencies": {
     "@cloudflare/workers-types": "^4.20260527.1",
     "@types/cookie": "^0.6.0",
+    "concurrently": "^10.0.0",
     "cookie": "^1.1.1",
     "copy-webpack-plugin": "^14.0.0",
     "css-loader": "^7.1.4",
