@@ -38,6 +38,6 @@ export default {
             }
         }
 
-        return new ErrorResponse(400, `Invalid method '${req.method}'!`);
+        return new ErrorResponse(405, `Invalid method '${req.method}'!`);
     }
 } satisfies ExportedHandler<ENV>
