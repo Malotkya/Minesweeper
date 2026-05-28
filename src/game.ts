@@ -185,13 +185,15 @@ export async function handleAction({action, value}:Minesweeper.Action, cookie:st
     let state:Minesweeper.State;
     switch (action) {
         case "new": {
+            //TODO: checkfor and delete old state!
             const {width, height, count} = value;
             if(isNaN(width))
                 return new ErrorResponse(400, "Invalid width!");
             if(isNaN(height))
                 return new ErrorResponse(400, "Invalid height!");
-            if(isNaN(count) || count < 0)
+            if(isNaN(count) || count < 0 || count > (width*height))
                 return new ErrorResponse(400, "Invalid count!");
+
 
             state = createNewState(width, height, count);
             break;
@@ -222,6 +224,11 @@ export async function handleAction({action, value}:Minesweeper.Action, cookie:st
 
             state = handleClick(data, x, y);
             break;
+        }
+
+
+        case "load": {
+            return await getState(cookie, store);
         }
 
         default:
