@@ -29,6 +29,9 @@ namespace Minesweeper {
             x:number,
             y:number
         };
+    } | {
+        action: "load",
+        value: undefined
     }
 }
 
