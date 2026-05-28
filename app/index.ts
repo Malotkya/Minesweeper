@@ -1,8 +1,15 @@
+import { MinesweeperGame } from "./Elements";
+import { apiFetch } from "./Elements/util";
+
+const game = new MinesweeperGame();
+
+apiFetch("load").then((resp)=>{
+    if(resp instanceof Error)
+        return;
+    game.init(resp);
+});
+
 window.onload = () => {
     history.replaceState(history.state, "", "/");
-    const main = document.querySelector("main");
-    if(!main)
-        alert("No main found!");
-    else
-        main.append("Hello World!");
+    document.body.appendChild(game);
 }
