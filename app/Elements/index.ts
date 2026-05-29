@@ -6,7 +6,6 @@ export class MinesweeperGame extends HTMLElement {
     #form:GameCreater = new GameCreater();
     #board:GameBoard = new GameBoard();
     #wheel:HTMLElement = _("p", "waiting...");
-    #count:number = 0;
 
     constructor() {
         super();
@@ -21,13 +20,12 @@ export class MinesweeperGame extends HTMLElement {
                     alert(resp.message);
                 } else {
                     this.#board.update(resp);
-                    this.#board.validate(this.#form.count)
+                    this.#board.validate()
                 }
             }
         });
 
         this.#form.addEventListener("submit", async()=>{
-            this.#count = this.#form.count;
             this.locked = true;
             const resp = await apiFetch("new", this.data);
             this.locked = false;
@@ -39,7 +37,7 @@ export class MinesweeperGame extends HTMLElement {
                 this.#board.set(resp);
                 if(resp.done) {
                     this.#form.updateButton(
-                        this.#board.validate(this.#count)
+                        this.#board.validate()
                     );
                 }
             }
@@ -47,11 +45,12 @@ export class MinesweeperGame extends HTMLElement {
     }
 
     init(state:Minesweeper.State) {
-        this.#count = 0;
         this.#form.width = state.data.width;
         this.#form.height = state.data.height;
         this.#form.count = state.data.mines;
         this.#board.set(state);
+
+        this.#form.init(this.#board.maxHeight, screen.availWidth);
     }
 
     get data() {

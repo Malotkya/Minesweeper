@@ -3,30 +3,33 @@
 }
 
 body {
-    margin: 0;
     width: 100vw;
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
     display: flex;
     flex-flow: column nowrap;
     align-items: center;
     gap: .2em;
+    margin: 0;
 }
 
 h1 {
-    flex-grow: 0;
+    flex: 0;
     text-align: center;
 }
 
 mine-sweeper {
-    flex-grow: 1;
-    max-width: calc(100vw - .5em);
-    display: grid;
-    grid-template-rows: auto 1fr;
+    flex: 1;
+    display: flex;
+    flex-flow: column nowrap;
+    align-content: center;
+    align-items: center;
     gap: .5em;
+    max-width: 100%;
 }
 
 game-header {
-    flex-grow: 0;
+    flex: 0;
     display: flex;
     flex-flow: row nowrap;
 
@@ -71,26 +74,33 @@ game-board {
     display: flex;
     flex-flow: column nowrap;
     gap: .25em;
-    padding: .25em;
+    padding: .5em;
     background-color: black;
+
+    button {
+        background-color: gray;
+    }
+
+    button:hover, button:focus {
+        background-color: gray;
+    }
 
     .row {
         display: flex;
         flex-flow: row nowrap;
         gap: .25em;
-        justify-content: space-evenly;
+        flex: 1;
     }
 
     game-tile {
-        min-width: 30px;
-        flex-grow: 1;
-        aspect-ratio: 1 / 1;
+        flex:1;
         border-radius: 4px;
         background-color: white;
 
         button, svg {
             width: 100%;
             height: 100%;
+            border-radius: 4px;
         }
     }
 }

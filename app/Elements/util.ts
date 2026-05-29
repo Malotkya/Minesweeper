@@ -250,12 +250,12 @@ export function renderPattern(pattern:Pattern, opts:PatternOptions = {}):SVGSVGE
             if("width" in viewBox || "height" in viewBox) {
                 const {width = 0, height = 0} = viewBox as {width:number, height:number};
 
-                background = svg("rect", {width, height, x:0, y:0});
-                viewBox = `0 0 ${Number(height)} ${Number(width)}`;
+                background = svg("rect", {width:width+2, height:height+2, x:-1, y:-1});
+                viewBox = `0 0 ${height} ${width}`;
             } else {
                 const {top = 0, left = 0, bottom = 0, right = 0} = viewBox;
 
-                background = svg("rect", {x:left, y:top, width:right-left, height:bottom-top, fill:bgColor});
+                background = svg("rect", {x:left-1, y:top-1, width:right-left+2, height:bottom-top+2, fill:bgColor});
                 viewBox = `${top} ${left} ${bottom} ${right}`;
             }
             break;
@@ -266,14 +266,14 @@ export function renderPattern(pattern:Pattern, opts:PatternOptions = {}):SVGSVGE
             viewBox = Number(viewBox);
 
         case "number":
-            background = svg("rect", {x:0, y:0, width:viewBox, height:viewBox, fill:bgColor});
+            background = svg("rect", {x:-1, y:-1, width:viewBox+2, height:viewBox+2, fill:bgColor});
             viewBox = `0 0 ${viewBox} ${viewBox}`;
             
             break;
         
         case "string":
             const [top, left = top, bottom = top, right = left] = viewBox.split(/\s+/).map(Number);
-            background = svg("rect", {x:left, y:top, width:right-left, height:bottom-top})
+            background = svg("rect", {x:left-1, y:top-1, width:right-left+2, height:bottom-top+2})
             break;
 
         default:

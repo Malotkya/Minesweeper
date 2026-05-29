@@ -4,35 +4,40 @@ export class GameBoard extends HTMLElement {
     #board:GameTile[][] = [];
     #count:number = 0;
     #id:string|undefined;
+    #max:{width:number, height:number}|undefined;
+
+
 
     constructor() {
         super();
-        this.style.aspectRatio = "1 / 1";
-        this.addEventListener("mousedown", (event)=>{
+        this.addEventListener("click", (event)=>{
             const target:GameTile|null = (event.target as HTMLElement).closest("game-tile");
             if(!target)
                 return;
 
-            switch(event.button) {
-            //Regular Click
-            case 0:
-                if(!target.isFlagged())
-                    this.dispatchEvent(new CustomEvent("input", {
-                        detail: target.pos,
-                        bubbles: true
-                    }));
-                break;
-
-            //Flag
-            case 2:
-                target.incFlag();
-            }
+            if(!target.isFlagged())
+                this.dispatchEvent(new CustomEvent("input", {
+                    detail: target.pos,
+                    bubbles: true
+                }));
         });
 
-        this.addEventListener('contextmenu', event => event.preventDefault());
+        this.addEventListener('contextmenu', (event) => {
+            const target:GameTile|null = (event.target as HTMLElement).closest("game-tile");
+            if(target && target.unknown) {
+                if(!event.ctrlKey) {
+                    event.preventDefault();
+                    target.incFlag();
+                }
+            }
+        });
     }
 
-    validate(mines:number):number {
+    get maxHeight() {
+        return this.#max?.height || -1;
+    }
+
+    validate():number {
         let count:number = 0;
 
         for(const row of this.#board) {
@@ -45,7 +50,7 @@ export class GameBoard extends HTMLElement {
             }
         }
 
-        return count - mines;
+        return count - this.#count;
     }
     
     set({id, data, board}:Minesweeper.State) {
@@ -56,7 +61,7 @@ export class GameBoard extends HTMLElement {
         const height = Math.min(board.length, data.height);
         const width = Math.min(data.width, ...board.map(r=>r.length));
 
-        this.style.aspectRatio = `${width} / ${height}`;
+        //this.style.aspectRatio = `${width} / ${height}`;
 
         for(let y=0; y<height; ++y) {
             const row:GameTile[] = []
@@ -98,12 +103,28 @@ export class GameBoard extends HTMLElement {
         if(this.#id === undefined)
             return;
 
-        this.innerHTML = "";
+        if(this.parentElement) {
+            const maxWidth = Math.floor(this.parentElement.getBoundingClientRect().width);
+            const maxHeight = Math.floor(document.body.getBoundingClientRect().height - this.getBoundingClientRect().top);
+
+            const maxTileWidth = Math.floor(maxWidth / this.#board[0].length);
+            const maxTileHeight = Math.floor(maxHeight / this.#board.length);
+            
+            if(maxTileHeight < maxTileWidth) {
+                this.style.width = `${this.#board[0].length * maxTileHeight}px`;
+                this.style.maxHeight = `${this.#board.length * maxTileHeight}px`;
+            } else {
+                this.style.width = `${this.#board[0].length * maxTileWidth}px`;
+                this.style.maxHeight = `${this.#board.length * maxTileWidth}px`;
+            }
+        }
         
+        this.innerHTML = "";
         for(const row of this.#board) {
-            const elm = _("div", {class: "row", style: `aspect-ratio: ${row.length} / 1`});
+            const elm = _("div", {class: "row", /*style: `aspect-ratio: ${row.length} / 1`*/});
 
             for(const tile of row) {
+
                 elm.appendChild(tile);
             }
 
@@ -228,32 +249,32 @@ export class GameTile extends HTMLElement {
         this.innerHTML = "";
         if(typeof this.#value === "string"){
             this.style.backgroundColor = "red";
-            this.appendChild(
+            this.append(
                 renderPattern(MINE, {viewBox: 32, fillColor: "black", bgColor: "red"})
             );
         } else if(this.#value < 0) {
             switch(this.#flagged) {
                 case true:
-                    this.appendChild(
-                        renderPattern(FLAG, {viewBox: 32, fillColor: "black"})
+                    this.append(
+                        renderPattern(FLAG, {viewBox: 32, fillColor: "black", bgColor: "lightgray"})
                     );
                     break;
 
                 case false:
-                    this.appendChild(
-                        renderPattern(MARK, {viewBox: 32, fillColor: "black"})
+                    this.append(
+                        renderPattern(MARK, {viewBox: 32, fillColor: "black",  bgColor: "lightgray"})
                     );
                     break;
 
                 default:
-                    this.appendChild(_("button"))
+                    this.append(_("button"))
             }
         } else if(this.#value > 8) {
             this.appendChild(
                 renderPattern(MINE, {viewBox: 32, fillColor: "black"})
             );
         } else if(this.#value > 0) {
-            this.append(String(this.#value));
+            this.append(_("p", this.#value));
         }
         
     }
