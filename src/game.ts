@@ -2,7 +2,7 @@ import { ErrorResponse, ONE_DAY } from "./util";
 import { parse } from "cookie";
 
 function generateRow(data:number[]|undefined, width:number):Minesweeper.Tile[] {
-    data = data?.sort();
+    data = data?.sort((a, b) => a - b);
     const output:Minesweeper.Tile[] = [];
 
     let next = data?.shift();
@@ -72,38 +72,51 @@ function resetState(state:Minesweeper.State):Minesweeper.State {
     return state;
 }
 
-function travelBoard(board:Minesweeper.Tile[][], x:number, y:number) {
-    const g = (x:number, y:number):Minesweeper.Tile|undefined => {
-        const row:Minesweeper.Tile[]|undefined = board[y];
-        if(row) {
-            return row[x];
-        }
-    }
+function g(board:Minesweeper.Tile[][], x:number, y:number):Minesweeper.Tile|undefined {
+    const row:Minesweeper.Tile[]|undefined = board[y];
+    if(!row)
+        return;
+    return row[x];
+}
 
-    const tile = g(x, y)
+function isMine(board:Minesweeper.Tile[][], x:number, y:number):boolean {
+    const tile = g(board, x, y);
+    if(!tile)
+        return false;
+
+    return typeof tile !== "number" || tile > 8;
+}
+
+function countAdjacentMines(board:Minesweeper.Tile[][], x:number, y:number):Minesweeper.Tile {
+    let count:number = 0;
+    if(isMine(board, x-1, y-1))
+        count += 1;
+    if(isMine(board, x-1, y))
+        count += 1;
+    if(isMine(board, x-1, y+1))
+        count += 1;
+    if(isMine(board, x+1, y-1))
+        count += 1;
+    if(isMine(board, x+1, y))
+        count += 1;
+    if(isMine(board, x+1, y+1))
+        count += 1;
+    if(isMine(board, x, y-1))
+        count += 1;
+    if(isMine(board, x, y+1))
+        count += 1;
+
+    return count as Minesweeper.Tile;
+}
+
+function travelBoard(board:Minesweeper.Tile[][], x:number, y:number) {
+    const tile = g(board, x, y)
     if(isNaN(tile as number) || (tile as number) >= 0)
         return;
 
-    let count:number = 0;
-    if(g(x-1, y-1) == 9){
-        count +=1;
-    } else if(g(x-1, y) == 9){
-        count +=1;
-    } else if(g(x-1, y+1) == 9){
-        count +=1;
-    } else if(g(x+1, y-1) == 9){
-        count +=1;
-    } else if(g(x+1, y) == 9){
-        count +=1;
-    } else if(g(x+1, y+1) == 9){
-        count +=1;
-    } else if(g(x, y-1) == 9){
-        count +=1;
-    } else if(g(x, y+1) == 9){
-        count +=1;
-    }
-    
-    board[y][x] = count as Minesweeper.Tile;
+    const count = countAdjacentMines(board, x, y);
+    board[y][x] = count;
+
     if(count === 0) {
         travelBoard(board, x-1, y);
         travelBoard(board, x+1, y);
@@ -139,11 +152,11 @@ export async function getAction(req:Request):Promise<Minesweeper.Action|ErrorRes
 
 async function getState(cookie:string|null, store:KVNamespace):Promise<Minesweeper.State|ErrorResponse> {
     if(!cookie)
-        return new ErrorResponse(400, "Missing Game State!");;
+        return new ErrorResponse(400, "Missing Game State!");
 
     const {game} = parse(cookie);
     if(!game)
-        return new ErrorResponse(400, "Missing Game State!");;
+        return new ErrorResponse(400, "Missing Game State!");
 
     const storedState = await store.get(game);
     if(!storedState)
@@ -182,11 +195,6 @@ async function getState(cookie:string|null, store:KVNamespace):Promise<Minesweep
 
             if(row.length !== width)
                 throw new TypeError("Borad State row does not match width!");
-
-            for(const tile of row) {
-                if(isNaN(tile as number))
-                    throw new TypeError("Board State tile is invalid!");
-            }
         }
 
         return state;
@@ -196,13 +204,49 @@ async function getState(cookie:string|null, store:KVNamespace):Promise<Minesweep
     }
 }
 
-function concealBoard(board:Minesweeper.Tile[][]) {
-    for(const row of board) {
-        for(let i=0; i<row.length; ++i) {
-            const v = row[i];
-            if(typeof v !== "number" || v > 8)
-                row[i] = -1;
+async function deleteState(cookie:string|null, store:KVNamespace):Promise<void> {
+    if(!cookie)
+        return;
+
+    const {game} = parse(cookie);
+    if(!game)
+        return;
+
+    await store.delete(game);
+}
+
+function revealBoard(board:Minesweeper.Tile[][]) {
+    for(let y=0; y<board.length; ++y) {
+        const row = board[y];
+
+        for(let x=0; x<row.length; ++x) {
+            const v = row[x];
+            if(typeof v === "number" && v <= 0)
+                row[x] = countAdjacentMines(board, x, y);
         }
+    }
+}
+
+export function convertBoardState(state:Minesweeper.State) {
+    let concealed:Minesweeper.Tile[][];
+    if(!state.done) {
+        let count:number = 0;
+        concealed = state.board.map((row)=>row.map(tile=>{
+            if(typeof tile === "string" || tile < 0) {
+                ++count;
+            } else if(tile > 8) {
+                return -1;
+            }
+            return tile;
+        }));
+        
+        state.done = count <= state.data.mines;
+    }
+
+    if(state.done) {
+        revealBoard(state.board);
+    } else {
+        state.board = concealed!;
     }
 }
 
@@ -210,7 +254,6 @@ export async function handleAction({action, value}:Minesweeper.Action, cookie:st
     let state:Minesweeper.State;
     switch (action) {
         case "new": {
-            //TODO: checkfor and delete old state!
             const {width, height, count} = value;
             if(isNaN(width))
                 return new ErrorResponse(400, "Invalid width!");
@@ -219,7 +262,7 @@ export async function handleAction({action, value}:Minesweeper.Action, cookie:st
             if(isNaN(count) || count < 0 || count > (width*height))
                 return new ErrorResponse(400, "Invalid count!");
 
-
+            await deleteState(cookie, store);
             state = createNewState(width, height, count);
             break;
         }
@@ -254,22 +297,21 @@ export async function handleAction({action, value}:Minesweeper.Action, cookie:st
 
         case "load": {
             const data = await getState(cookie, store);
-            if(data instanceof Response)
-                return data;
-            state = data;
-            break;
+            if(data instanceof Response) {
+                if(value) 
+                    return handleAction({action: "new", value}, null, store);
+
+            }
+
+            return data;
         }
 
         default:
             return new ErrorResponse(400, `Invalid action "${action}"`);
     }
 
-    if(state.done) {
-        await store.delete(state.id);
-    } else {
-        await store.put(state.id, JSON.stringify(state), {expirationTtl:ONE_DAY});
-        concealBoard(state.board);
-    }
-        
+    
+    await store.put(state.id, JSON.stringify(state), {expirationTtl:ONE_DAY});
+
     return state;
 }
