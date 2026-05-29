@@ -34,7 +34,11 @@ namespace Minesweeper {
         };
     } | {
         action: "load",
-        value: undefined
+        value?: {
+            width:number,
+            height:number,
+            count:number
+        }
     }
 }
 
