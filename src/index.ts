@@ -1,4 +1,4 @@
-import { handleAction, getAction } from "./game";
+import { handleAction, getAction, convertBoardState } from "./game";
 import { ErrorResponse, GameResponse } from "./util";
 
 async function handleGet(req:Request, store:Fetcher):Promise<Response> {
@@ -31,6 +31,7 @@ export default {
                 if(state instanceof Response)
                     return state;
 
+                convertBoardState(state);
                 return new GameResponse(state);
             } catch (e) {
                 console.error(e);
