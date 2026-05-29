@@ -2,25 +2,34 @@ import {createElement as _, Pattern, renderPattern} from "./util";
 
 export class GameBoard extends HTMLElement {
     #board:GameTile[][] = [];
+    #count:number = 0;
     #id:string|undefined;
 
     constructor() {
         super();
-        this.addEventListener("click", (event)=>{
-            const target:HTMLButtonElement|null = event.target as any;
-            if(!target || target.tagName !== "BUTTON")
+        this.style.aspectRatio = "1 / 1";
+        this.addEventListener("mousedown", (event)=>{
+            const target:GameTile|null = (event.target as HTMLElement).closest("game-tile");
+            if(!target)
                 return;
 
-            const tile:GameTile|null = target.closest("tile");
-            if(tile) {
-                event.preventDefault();
-                event.stopPropagation();
-                this.dispatchEvent(new CustomEvent("input", {
-                    detail: tile.pos,
-                    bubbles: true
-                }));
+            switch(event.button) {
+            //Regular Click
+            case 0:
+                if(!target.isFlagged())
+                    this.dispatchEvent(new CustomEvent("input", {
+                        detail: target.pos,
+                        bubbles: true
+                    }));
+                break;
+
+            //Flag
+            case 2:
+                target.incFlag();
             }
-        })
+        });
+
+        this.addEventListener('contextmenu', event => event.preventDefault());
     }
 
     validate(mines:number):number {
@@ -39,17 +48,20 @@ export class GameBoard extends HTMLElement {
         return count - mines;
     }
     
-    set({id, width, height, board}:Minesweeper.State) {
+    set({id, data, board}:Minesweeper.State) {
         this.#id = id;
         this.#board = [];
-        height = Math.min(board.length, height);
-        width = Math.min(width, ...board.map(r=>r.length));
+        this.#count = data.mines;
 
+        const height = Math.min(board.length, data.height);
+        const width = Math.min(data.width, ...board.map(r=>r.length));
+
+        this.style.aspectRatio = `${width} / ${height}`;
 
         for(let y=0; y<height; ++y) {
             const row:GameTile[] = []
             for(let x=0; x<width; ++x)
-                row.push(new GameTile(x, y))
+                row.push(new GameTile(x, y, board[y][x]))
             
             this.#board.push(row);
         }
@@ -65,7 +77,7 @@ export class GameBoard extends HTMLElement {
         if(this.#id !== state.id)
             throw new Error("ID mismatch!");
 
-        const {width, height, board} = state;
+        const {data:{width, height}, board} = state;
         for(let y=0; y<height; ++y) {
             const row = this.#board[y];
             if(!row)
@@ -89,7 +101,7 @@ export class GameBoard extends HTMLElement {
         this.innerHTML = "";
         
         for(const row of this.#board) {
-            const elm = _("div", {class: "row"});
+            const elm = _("div", {class: "row", style: `aspect-ratio: ${row.length} / 1`});
 
             for(const tile of row) {
                 elm.appendChild(tile);
@@ -163,9 +175,9 @@ export class GameTile extends HTMLElement {
 
     readonly pos:{x:number, y:number};
 
-    constructor(x:number, y:number) {
+    constructor(x:number, y:number, value:Minesweeper.Tile = -1) {
         super();
-        this.#value = -1;
+        this.#value = value;
         this.pos = {x, y};
     }
 
@@ -173,13 +185,31 @@ export class GameTile extends HTMLElement {
         return typeof this.#value === "number" && this.#value < 0;
     }
 
-    get flagged():boolean|undefined {
-        return this.#flagged;
+    incFlag() {
+        if(typeof this.#value !== "number" || this.#value >= 0)
+            return;
+
+        switch(this.#flagged) {
+            case true:
+                this.#flagged = false;
+                break;
+
+            case false:
+                this.#flagged = void 0;
+                break;
+
+            default:
+                this.#flagged = true;
+        }
+
+        this.connectedCallback();
     }
 
-    set flagged(value:boolean|undefined) {
-        this.#flagged = value;
-        this.connectedCallback();
+    isFlagged() {
+        if(typeof this.#value !== "number" || this.#value >= 0)
+            return true;
+
+        return typeof this.#flagged === "boolean"
     }
 
     get value():Minesweeper.Tile {
@@ -188,7 +218,7 @@ export class GameTile extends HTMLElement {
 
     set value(value:Minesweeper.Tile) {
         this.#value = value;
-        if(typeof value === "number" && value >= 0)
+        if(typeof value !== "number" || value >= 0)
             this.#flagged = undefined;
 
         this.connectedCallback();
@@ -197,6 +227,7 @@ export class GameTile extends HTMLElement {
     connectedCallback() {
         this.innerHTML = "";
         if(typeof this.#value === "string"){
+            this.style.backgroundColor = "red";
             this.appendChild(
                 renderPattern(MINE, {viewBox: 32, fillColor: "black", bgColor: "red"})
             );
@@ -221,8 +252,8 @@ export class GameTile extends HTMLElement {
             this.appendChild(
                 renderPattern(MINE, {viewBox: 32, fillColor: "black"})
             );
-        } else {
-            this.append(String(this.#value))
+        } else if(this.#value > 0) {
+            this.append(String(this.#value));
         }
         
     }

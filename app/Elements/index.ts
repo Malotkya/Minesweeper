@@ -18,7 +18,6 @@ export class MinesweeperGame extends HTMLElement {
                 this.locked = false;
 
                 if(resp instanceof Error) {
-                    console.error(resp);
                     alert(resp.message);
                 } else {
                     this.#board.update(resp);
@@ -30,11 +29,7 @@ export class MinesweeperGame extends HTMLElement {
         this.#form.addEventListener("submit", async()=>{
             this.#count = this.#form.count;
             this.locked = true;
-            const resp = await apiFetch("new", {
-                width: this.#form.width,
-                height: this.#form.height,
-                count: this.#form.count
-            });
+            const resp = await apiFetch("new", this.data);
             this.locked = false;
 
             if(resp instanceof Error) {
@@ -53,7 +48,18 @@ export class MinesweeperGame extends HTMLElement {
 
     init(state:Minesweeper.State) {
         this.#count = 0;
+        this.#form.width = state.data.width;
+        this.#form.height = state.data.height;
+        this.#form.count = state.data.mines;
         this.#board.set(state);
+    }
+
+    get data() {
+        return {
+            width: this.#form.width,
+            height: this.#form.height,
+            count: this.#form.count
+        }
     }
 
     get locked():boolean {
@@ -71,7 +77,8 @@ export class MinesweeperGame extends HTMLElement {
 
     connectedCallback() {
         appendContent(this, [
-            
+            this.#form,
+            this.#board
         ])
     }
 }

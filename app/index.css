@@ -1,3 +1,96 @@
+* {
+    box-sizing: border-box;
+}
+
 body {
-    color: pink;
+    margin: 0;
+    width: 100vw;
+    min-height: 100vh;
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: center;
+    gap: .2em;
+}
+
+h1 {
+    flex-grow: 0;
+    text-align: center;
+}
+
+mine-sweeper {
+    flex-grow: 1;
+    max-width: calc(100vw - .5em);
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: .5em;
+}
+
+game-header {
+    flex-grow: 0;
+    display: flex;
+    flex-flow: row nowrap;
+
+    .btns {
+        display: flex;
+        align-content: center;
+        justify-content: center;
+        flex-grow: 1;
+    }
+
+    .input {
+        display: flex;
+        flex-flow: row wrap;
+        justify-content: space-between;
+        align-content: center;
+        gap: .3em;
+        flex-grow: 2;
+        
+        .row {
+            display: flex;
+            flex-flow: row nowrap;
+            justify-content: space-between;
+            max-width: 300px;
+
+            label {
+                padding-right: .2em;
+            }
+
+            input {
+                flex-grow: 0;
+                max-width: 10ch;
+            }
+
+            labael {
+                flex-grow: 1;
+            }
+        }
+    }
+}
+
+game-board {
+    display: flex;
+    flex-flow: column nowrap;
+    gap: .25em;
+    padding: .25em;
+    background-color: black;
+
+    .row {
+        display: flex;
+        flex-flow: row nowrap;
+        gap: .25em;
+        justify-content: space-evenly;
+    }
+
+    game-tile {
+        min-width: 30px;
+        flex-grow: 1;
+        aspect-ratio: 1 / 1;
+        border-radius: 4px;
+        background-color: white;
+
+        button, svg {
+            width: 100%;
+            height: 100%;
+        }
+    }
 }

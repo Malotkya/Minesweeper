@@ -8,8 +8,11 @@ namespace Minesweeper {
     export type State = {
         id: string;
         done?:boolean;
-        width:number;
-        height:number;
+        data: {
+            mines:number;
+            width:number;
+            height:number;
+        };
         board: Tile[][];
     };
 

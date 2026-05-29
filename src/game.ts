@@ -12,6 +12,7 @@ function generateRow(data:number[]|undefined, width:number):Minesweeper.Tile[] {
             output.push(-1);
         
         output.push(9);
+        ++i;
         next = data?.shift();
     }
 
@@ -22,6 +23,7 @@ function generateRow(data:number[]|undefined, width:number):Minesweeper.Tile[] {
 }
 
 function createNewState(width:number, height:number, count:number):Minesweeper.State {
+    const mines = count;
     const map:Record<number, number[]|undefined> = {};
     const pushValidPos = (x:number, y:number):boolean => {
         let row = map[y];
@@ -53,7 +55,10 @@ function createNewState(width:number, height:number, count:number):Minesweeper.S
     
     return {
         id: crypto.randomUUID(),
-        width, height, board
+        data: {
+            width, height, mines
+        },
+        board
     }
 }
 
@@ -68,36 +73,42 @@ function resetState(state:Minesweeper.State):Minesweeper.State {
 }
 
 function travelBoard(board:Minesweeper.Tile[][], x:number, y:number) {
-    const tile = board[y][x];
-    if(tile != -1)
+    const g = (x:number, y:number):Minesweeper.Tile|undefined => {
+        const row:Minesweeper.Tile[]|undefined = board[y];
+        if(row) {
+            return row[x];
+        }
+    }
+
+    const tile = g(x, y)
+    if(isNaN(tile as number) || (tile as number) >= 0)
         return;
 
     let count:number = 0;
-    if(board[y-1][x-1] == 9){
+    if(g(x-1, y-1) == 9){
         count +=1;
-    } else if(board[y-1][x] == 9){
+    } else if(g(x-1, y) == 9){
         count +=1;
-    } else if(board[y-1][x+1] == 9){
+    } else if(g(x-1, y+1) == 9){
         count +=1;
-    } else if(board[y+1][x-1] == 9){
+    } else if(g(x+1, y-1) == 9){
         count +=1;
-    } else if(board[y+1][x] == 9){
+    } else if(g(x+1, y) == 9){
         count +=1;
-    } else if(board[y+1][x+1] == 9){
+    } else if(g(x+1, y+1) == 9){
         count +=1;
-    } else if(board[y][x-1] == 9){
+    } else if(g(x, y-1) == 9){
         count +=1;
-    } else if(board[y][x+1] == 9){
+    } else if(g(x, y+1) == 9){
         count +=1;
     }
     
+    board[y][x] = count as Minesweeper.Tile;
     if(count === 0) {
         travelBoard(board, x-1, y);
         travelBoard(board, x+1, y);
         travelBoard(board, x, y-1);
         travelBoard(board, x, y+1);
-    } else {
-        board[y][x] = count as Minesweeper.Tile;
     }
 }
 
@@ -108,10 +119,7 @@ function handleClick(state:Minesweeper.State, x:number, y:number):Minesweeper.St
         state.board[y][x] = "X";
         
     } else if(tile === -1) {
-        travelBoard(state.board, x-1, y);
-        travelBoard(state.board, x+1, y);
-        travelBoard(state.board, x, y-1);
-        travelBoard(state.board, x, y+1);
+        travelBoard(state.board, x, y)
     }
 
     return state;
@@ -149,23 +157,30 @@ async function getState(cookie:string|null, store:KVNamespace):Promise<Minesweep
         if(typeof state.id !== "string")
             state.id = game;
 
-        if(isNaN(state.width))
+        if(typeof state.data !== "object")
+            throw new TypeError('Missing game data!');
+
+        if(isNaN(state.data.width))
             throw new TypeError("Width is not a number!");
 
-        if(isNaN(state.height))
+        if(isNaN(state.data.height))
             throw new TypeError("Height is not a number!");
+
+        if(isNaN(state.data.mines))
+            throw new TypeError("Mines is not a number!");
 
         if(!Array.isArray(state.board))
             throw new TypeError("Board state is not an Array!");
 
-        if(state.board.length !== state.height)
+        if(state.board.length !== state.data.height)
             throw new TypeError("Board state does not match height!");
 
+        const width = state.data.width;
         for(const row of state.board) {
             if(!Array.isArray(row))
                 throw new TypeError("Board State row is malformed!");
 
-            if(row.length !== state.width)
+            if(row.length !== width)
                 throw new TypeError("Borad State row does not match width!");
 
             for(const tile of row) {
@@ -178,6 +193,16 @@ async function getState(cookie:string|null, store:KVNamespace):Promise<Minesweep
     } catch (e) {
         console.error(e);
         return new ErrorResponse(500, `Stored Gamestate was corrupted!`);
+    }
+}
+
+function concealBoard(board:Minesweeper.Tile[][]) {
+    for(const row of board) {
+        for(let i=0; i<row.length; ++i) {
+            const v = row[i];
+            if(typeof v !== "number" || v > 8)
+                row[i] = -1;
+        }
     }
 }
 
@@ -216,10 +241,10 @@ export async function handleAction({action, value}:Minesweeper.Action, cookie:st
                 return data;
 
             const {x, y} = value;
-            if(isNaN(x) || (x < 0 || x >= data.width))
+            if(isNaN(x) || (x < 0 || x >= data.data.width))
                 return new ErrorResponse(400, "Invalid X pos!");
 
-            if(isNaN(y) || (y < 0 || y >= data.height))
+            if(isNaN(y) || (y < 0 || y >= data.data.height))
                 return new ErrorResponse(400, "Invalid X pos!");
 
             state = handleClick(data, x, y);
@@ -228,17 +253,23 @@ export async function handleAction({action, value}:Minesweeper.Action, cookie:st
 
 
         case "load": {
-            return await getState(cookie, store);
+            const data = await getState(cookie, store);
+            if(data instanceof Response)
+                return data;
+            state = data;
+            break;
         }
 
         default:
             return new ErrorResponse(400, `Invalid action "${action}"`);
     }
 
-    if(state.done)
+    if(state.done) {
         await store.delete(state.id);
-    else
+    } else {
         await store.put(state.id, JSON.stringify(state), {expirationTtl:ONE_DAY});
-
+        concealBoard(state.board);
+    }
+        
     return state;
 }

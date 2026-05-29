@@ -25,10 +25,14 @@ export function appendContent(element:Element, child:Content):void {
     }
 }
 
+function fix(name:string):string {
+    return name.replaceAll(/([A-Z])/g, ("-$1")).toLocaleLowerCase();
+}
+
 type EventHandler<E extends Event> = (event:E)=>any;
 export type Attribute = string|number|boolean|EventHandler<any>|URL|Date|undefined|string[];
 function setNormalAttribute(element:HTMLElement, name:string, value:Attribute):void {
-    name = name.replaceAll(/([A-Z])/g, ("-$1")).toLocaleLowerCase();
+    name = fix(name);
 
     switch(typeof value){
         case "boolean":
@@ -78,7 +82,7 @@ function setEventAttribute(element:Element, name:string, value:string|EventHandl
 }
 
 function setAriaAttribute(element:Element, name:string, value:Attribute) {
-    name = name.replaceAll(/([A-Z])/g, ("-$1")).toLocaleLowerCase();
+    name = fix(name);
     switch(typeof value) {
         case "number":
             if(isNaN(value))
@@ -152,7 +156,8 @@ export function createElement(name:string, attributes:AttributeList|Content = {}
 export type SVGAttributesMap = Record<string, string|number>;
 export function setSvgAttributes(element:SVGElement, attributes:SVGAttributesMap) {
     for(const name in attributes) {
-        element.setAttributeNS("http://www.w3.org/2000/svg", name, String(attributes[name]))
+        element.setAttribute(name, String(attributes[name]))
+        //element.setAttributeNS("http://www.w3.org/2000/svg", fix(name), String(attributes[name]))
     }
 }
 
@@ -208,7 +213,7 @@ function createFill(y:number, fill:Fill, color:string):SVGRectElement[] {
         return output;
     }
 
-    return [svg("rect", {width: 1, height: 1, y, x:fill})]
+    return [svg("rect", {width: 1, height: 1, y, x:fill, fill:color})]
 }
 
 export type Group = number|Fill[];
@@ -233,23 +238,26 @@ export type Pattern = [Group, Fill[]][];
 export interface PatternOptions {
     bgColor?:string, 
     fillColor?:string,
-    width?:number,
-    height?:number,
-    viewBox?:{top:number, left:number, bottom:number, right:number}|string|number
+    viewBox?:{top:number, left:number, bottom:number, right:number}|{width:number, height:number}|string|number
 }
 
 export function renderPattern(pattern:Pattern, opts:PatternOptions = {}):SVGSVGElement {
-    let {bgColor = "white", fillColor = "black", width, height, viewBox} = opts;
+    let {bgColor = "white", fillColor = "black", viewBox} = opts;
     
+    let background:SVGRectElement;
     switch (typeof viewBox) {
         case "object":
-            if(!width)
-                width = viewBox.right - viewBox.left;
+            if("width" in viewBox || "height" in viewBox) {
+                const {width = 0, height = 0} = viewBox as {width:number, height:number};
 
-            if(!height)
-                height = viewBox.bottom - viewBox.top;
+                background = svg("rect", {width, height, x:0, y:0});
+                viewBox = `0 0 ${Number(height)} ${Number(width)}`;
+            } else {
+                const {top = 0, left = 0, bottom = 0, right = 0} = viewBox;
 
-            viewBox = `${viewBox.top} ${viewBox.left} ${viewBox.bottom} ${viewBox.right}`;
+                background = svg("rect", {x:left, y:top, width:right-left, height:bottom-top, fill:bgColor});
+                viewBox = `${top} ${left} ${bottom} ${right}`;
+            }
             break;
 
         case "undefined":
@@ -258,24 +266,14 @@ export function renderPattern(pattern:Pattern, opts:PatternOptions = {}):SVGSVGE
             viewBox = Number(viewBox);
 
         case "number":
-            if(!width)
-                width = viewBox;
-
-            if(!height)
-                height = viewBox;
-
+            background = svg("rect", {x:0, y:0, width:viewBox, height:viewBox, fill:bgColor});
             viewBox = `0 0 ${viewBox} ${viewBox}`;
+            
             break;
         
         case "string":
-            if(!width || !height) {
-                const [top, left = top, bottom = top, right = left] = viewBox.split(/\s+/);
-                if(!width)
-                    width = Number(right) - Number(left);
-
-                if(!height)
-                    height = Number(bottom) - Number(top);
-            }
+            const [top, left = top, bottom = top, right = left] = viewBox.split(/\s+/).map(Number);
+            background = svg("rect", {x:left, y:top, width:right-left, height:bottom-top})
             break;
 
         default:
@@ -283,7 +281,8 @@ export function renderPattern(pattern:Pattern, opts:PatternOptions = {}):SVGSVGE
 
     }
 
-    return svg({width, height, viewBox, fill:bgColor},
+    return svg({viewBox},
+        background,
         pattern.flatMap(([group, fill])=>fill.flatMap(fill=>fillGroup(group, fill, fillColor)))
     )
 }
@@ -313,6 +312,8 @@ export async function apiFetch(action:string, value?:any):Promise<Minesweeper.St
         console.error(body);
         return new Error(body.message || resp.statusText);
     }
+
+    console.debug(body);
 
     return body;
 }
